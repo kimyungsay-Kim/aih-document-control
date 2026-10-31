@@ -681,7 +681,7 @@ if (typeof module !== 'undefined') module.exports = DCS;
   const DISC = [['ALL', 'ทุกระบบ'], ['EE', 'EE'], ['AC', 'AC'], ['SN', 'SN'], ['FP', 'FP'], ['M&E', 'M&E'], ['GEN', 'ทั่วไป']];
   const CAT_ORDER = ['MAT', 'SHOP', 'INSP', 'MO', 'RFI', 'HO', 'DRP', 'DRQ', 'GN', 'OT', 'MS', 'VO', 'VI', 'ML', 'IN', 'OTHER'];
 
-  const state = { data: null, meta: null, tab: 'docs', disc: 'ALL', q: '', docFilter: 'all', statusF: 'all', allRevs: true, limit: 120, bucket: 'all', check: null, sort: 'new' };
+  const state = { data: null, meta: null, tab: 'docs', disc: 'ALL', q: '', docFilter: 'all', statusF: 'all', allRevs: true, limit: 120, bucket: 'all', check: null, sort: 'rowNew' };
   let all = [], catInfo = {}, handle = null;
 
   /* ---------- storage (IndexedDB, best effort) ---------- */
