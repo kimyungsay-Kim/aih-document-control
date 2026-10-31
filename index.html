@@ -78,7 +78,7 @@ h1{font:700 clamp(24px,4.2vw,34px)/1.15 var(--f-display);margin:6px 0 0;text-wra
 .chip:hover{border-color:var(--accent);color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 
-main .wrap{padding-block:22px 60px;display:grid;gap:22px}
+main .wrap{padding-block:22px 60px;display:grid;gap:22px;grid-template-columns:minmax(0,1fr)}
 h2{font:600 19px/1.3 var(--f-display);margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 h2 small{font:400 13px var(--f-body);color:var(--muted)}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
@@ -141,6 +141,7 @@ h2 small{font:400 13px var(--f-body);color:var(--muted)}
 .picker-ic{width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none}
 .picker-ic svg{width:20px;height:20px}
 .select-wrap{position:relative;min-width:0}
+.picker select{min-width:0}
 .select-wrap::after{content:"";position:absolute;right:16px;top:50%;width:10px;height:10px;border-right:2.5px solid var(--accent-ink);border-bottom:2.5px solid var(--accent-ink);transform:translateY(-70%) rotate(45deg);pointer-events:none}
 .picker select{appearance:none;-webkit-appearance:none;width:100%;height:50px;border:2px solid var(--accent);border-radius:12px;background:var(--surface);padding:0 44px 0 16px;font:600 16px var(--f-body);color:var(--ink);cursor:pointer;box-shadow:0 2px 0 rgba(12,122,132,.15)}
 .picker select:hover{background:#F7FDFD}
@@ -154,6 +155,11 @@ h2 small{font:400 13px var(--f-body);color:var(--muted)}
 .qchip:hover{background:#fff;border-color:var(--accent)}
 .qchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 @media (max-width:620px){.picker{padding:12px}.picker-row{grid-template-columns:minmax(0,1fr) auto}.select-wrap{grid-column:1/-1;grid-row:2}.picker-lbl small{display:none}}
+
+.disc-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row-lbl{font:600 13px var(--f-body);color:var(--muted);letter-spacing:.04em}
+.chip.disc{padding:6px 16px;font-size:14px}
+@media (max-width:620px){.disc-row .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}.disc-row .chips::-webkit-scrollbar{display:none}.disc-row{flex-wrap:nowrap}}
 
 /* toolbar */
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
@@ -190,7 +196,7 @@ h2 small{font:400 13px var(--f-body);color:var(--muted)}
 .lk span.t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lk small{margin-left:auto;font-weight:500;color:var(--muted);font-family:var(--f-mono);font-size:11.5px;white-space:nowrap}
 .lk.off{opacity:.55;pointer-events:none;border-style:dashed;font-weight:500;color:var(--muted)}
-.revs{grid-column:1/-1}
+.revs{grid-column:1/-1;min-width:0}
 .revs summary{cursor:pointer;font-size:13px;color:var(--accent-ink);font-weight:600;list-style:none;display:inline-flex;gap:6px;align-items:center}
 .revs summary::-webkit-details-marker{display:none}
 .revs summary::before{content:"▸";transition:transform .15s}
@@ -277,7 +283,6 @@ footer{font-size:12px;color:var(--muted);text-align:center;padding-bottom:30px}
       <button class="tab" role="tab" data-tab="pending" type="button">รอตอบกลับ <span class="count num" id="cPending">0</span></button>
       <button class="tab" role="tab" data-tab="resubmit" type="button">ต้องแก้ไขส่งใหม่ <span class="count num" id="cResubmit">0</span></button>
     </div>
-    <div class="chips" id="discChips" aria-label="กรองตามระบบ"></div>
   </div>
 </nav>
 
@@ -674,7 +679,7 @@ if (typeof module !== 'undefined') module.exports = DCS;
   const DISC = [['ALL', 'ทุกระบบ'], ['EE', 'EE'], ['AC', 'AC'], ['SN', 'SN'], ['FP', 'FP'], ['M&E', 'M&E'], ['GEN', 'ทั่วไป']];
   const CAT_ORDER = ['MAT', 'SHOP', 'INSP', 'MO', 'RFI', 'HO', 'DRP', 'DRQ', 'GN', 'OT', 'MS', 'VO', 'VI', 'ML', 'IN', 'OTHER'];
 
-  const state = { data: null, meta: null, tab: 'docs', disc: 'ALL', q: '', docFilter: 'all', statusF: 'all', allRevs: false, limit: 120, bucket: 'all', check: null, sort: 'sheet' };
+  const state = { data: null, meta: null, tab: 'docs', disc: 'ALL', q: '', docFilter: 'all', statusF: 'all', allRevs: true, limit: 120, bucket: 'all', check: null, sort: 'new' };
   let all = [], catInfo = {}, handle = null;
 
   /* ---------- storage (IndexedDB, best effort) ---------- */
@@ -836,7 +841,7 @@ if (typeof module !== 'undefined') module.exports = DCS;
   function docRow(d) {
     const L = d.L;
     const meta = d.fields.map(fieldText);
-    const dur = L.send && L.reply ? ` <span class="num">(${L.reply - L.send} วัน)</span>` : '';
+    const dur = L.send && L.reply && L.reply >= L.send ? ` <span class="num">(${L.reply - L.send} วัน)</span>` : '';
     const dates = d.cat === 'IN' ? '' : `<div class="dates"><span>ส่ง <b class="num">${fmtD(L.send)}</b></span><span>ตอบกลับ <b class="num">${fmtD(L.reply)}</b>${dur}</span></div>`;
     const flag = d.flagFile ? `<span class="remark">ไฟล์ตอบกลับ ${esc(d.flagFile)} อยู่ใน OneDrive แล้ว แต่ Excel ยังไม่ลงผล</span>` : '';
     return `<article class="doc s-${d.cls}">
@@ -858,13 +863,17 @@ if (typeof module !== 'undefined') module.exports = DCS;
   }
 
   /* ---------- views ---------- */
+  function discRow() {
+    const chips = DISC.filter(([id]) => id === 'ALL' || all.some(d => d.disc === id)).map(([id, l]) => `<button class="chip disc" type="button" data-disc="${esc(id)}" aria-pressed="${state.disc === id}">${l}</button>`).join('');
+    return `<div class="disc-row" role="group" aria-label="กรองตามระบบ"><span class="row-lbl">ระบบ</span><div class="chips">${chips}</div></div>`;
+  }
   function vOverview() {
     const T = tracked(); const c = k => T.filter(d => d.cls === k).length;
     const wait = T.filter(d => d.cls === 'waiting'); const old = wait.filter(d => d.age > 30).length;
     const k = (lbl, val, sub, color, go) => `<button class="kpi" type="button" style="--k:${color}" data-go="${go}"><span class="lbl">${lbl}</span><span class="val">${val.toLocaleString()}</span><span class="sub">${sub}</span></button>`;
     const total = T.filter(d => d.cls !== 'none').length;
     const pct = n => total ? Math.round(n * 100 / total) + '% ของที่ส่งแล้ว' : '';
-    let html = `<section class="kpis">
+    let html = discRow() + `<section class="kpis">
       ${k('เอกสารที่ส่งแล้ว', total, 'นับเฉพาะ Rev ล่าสุดของแต่ละเรื่อง', 'var(--accent)', 'docs:all')}
       ${k('อนุมัติ / ผ่าน', c('ok'), pct(c('ok')), 'var(--ok)', 'docs:ok')}
       ${k('อนุมัติตามหมายเหตุ', c('note'), pct(c('note')), 'var(--note)', 'docs:note')}
@@ -910,13 +919,13 @@ if (typeof module !== 'undefined') module.exports = DCS;
     const bk = B.slice(1).map(([id, lbl, f]) => `<button class="bucket" type="button" data-bucket="${id}" aria-pressed="${state.bucket === id}"><span class="lbl">${lbl}</span><span class="val">${W.filter(f).length}</span></button>`).join('');
     const f = (B.find(b => b[0] === state.bucket) || B[0])[2];
     const items = W.filter(f).filter(matchQ);
-    return `<section class="buckets">${bk}</section>
+    return discRow() + `<section class="buckets">${bk}</section>
       <div class="toolbar"><h2>เอกสารรอตอบกลับ <small>${items.length} รายการ · เรียงจากรอนานที่สุด${state.bucket !== 'all' ? ' · <a href="#pending" data-bucket="all">ดูทั้งหมด</a>' : ''}</small></h2></div>
       ${listBlock(items, 'ไม่มีเอกสารที่รอตอบกลับในตัวกรองนี้')}`;
   }
   function vResubmit() {
     const items = tracked().filter(d => d.cls === 'fail').filter(matchQ).sort((a, b) => (b.L.reply || 0) - (a.L.reply || 0));
-    return `<div class="toolbar"><h2>ต้องแก้ไขและส่ง Rev ใหม่ <small>${items.length} รายการ · Rev ล่าสุดเป็น NP / Not Pass และยังไม่มี Rev ถัดไป</small></h2></div>${listBlock(items, 'ไม่มีเอกสารที่ต้องแก้ไขส่งใหม่ 🎉'.replace(' 🎉', ''))}`;
+    return discRow() + `<div class="toolbar"><h2>ต้องแก้ไขและส่ง Rev ใหม่ <small>${items.length} รายการ · Rev ล่าสุดเป็น NP / Not Pass และยังไม่มี Rev ถัดไป</small></h2></div>${listBlock(items, 'ไม่มีเอกสารที่ต้องแก้ไขส่งใหม่ 🎉'.replace(' 🎉', ''))}`;
   }
   function matchQ(d) {
     if (!state.q) return true;
@@ -935,7 +944,8 @@ if (typeof module !== 'undefined') module.exports = DCS;
     items = items.filter(matchQ);
     const sortMode = state.sort !== 'sheet' ? state.sort : state.q ? 'new' : 'sheet';
     if (sortMode !== 'sheet') {
-      const dt = d => d.L.send || d.L.reply || (d.fields.find(f => f[1] && typeof f[1] === 'object') || [])[1]?.date || 0;
+      const today = todaySerial(); const ok = s => (s && s <= today ? s : 0);
+      const dt = d => ok(d.L.send) || ok(d.L.reply) || ok((d.fields.find(f => f[1] && typeof f[1] === 'object') || [])[1]?.date) || 0;
       items = items.map((d, i) => [d, dt(d), i]).sort((x, y) => {
         if (!x[1] !== !y[1]) return x[1] ? -1 : 1; // no date goes last
         return (sortMode === 'new' ? y[1] - x[1] : x[1] - y[1]) || x[2] - y[2];
@@ -955,6 +965,7 @@ if (typeof module !== 'undefined') module.exports = DCS;
         </div>
         <div class="quick" aria-label="เลือกประเภทด่วน">${quick.map(([v, l]) => `<button class="qchip" type="button" data-pickcat="${esc(v)}" aria-pressed="${curCat === v}">${esc(l)}</button>`).join('')}</div>
       </section>
+      ${discRow()}
       <div class="toolbar">
         <div class="chips" id="statusChips">${sts.map(([v, l]) => `<button class="chip" type="button" data-status="${v}" aria-pressed="${state.statusF === v}">${l}</button>`).join('')}</div>
         <label class="toggle"><input type="checkbox" id="allRevs" ${state.allRevs ? 'checked' : ''}> แสดงประวัติทุก Rev</label>
@@ -994,7 +1005,6 @@ if (typeof module !== 'undefined') module.exports = DCS;
       $('#cPending').textContent = T.filter(d => d.cls === 'waiting').length;
       $('#cResubmit').textContent = T.filter(d => d.cls === 'fail').length;
       document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === state.tab));
-      $('#discChips').innerHTML = DISC.filter(([id]) => id === 'ALL' || all.some(d => d.disc === id)).map(([id, l]) => `<button class="chip" type="button" data-disc="${esc(id)}" aria-pressed="${state.disc === id}">${l}</button>`).join('');
     }
     const v = !has ? vStart() : state.tab === 'pending' ? vPending() : state.tab === 'resubmit' ? vResubmit() : state.tab === 'docs' ? vDocs() : vOverview();
     $('#view').innerHTML = v;
@@ -1067,7 +1077,6 @@ if (typeof module !== 'undefined') module.exports = DCS;
     if (hm) { try { const v = decodeURIComponent(hm[1]); if (/^https:\/\//.test(v)) ls.set('dcs-link', v); } catch {} }
     state.tab = 'docs'; history.replaceState(null, '', '#docs');
     const d = ls.get('dcs-disc'); if (d) state.disc = d;
-    const so = ls.get('dcs-sort'); if (so === 'new' || so === 'old') state.sort = so;
     render();
     const saved = await idb.get('data');
     if (saved && saved.data) setData(saved.data, saved.meta);
