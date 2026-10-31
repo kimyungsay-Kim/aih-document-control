@@ -166,7 +166,9 @@ h2 small{font:400 13px var(--f-body);color:var(--muted)}
 .toolbar select{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);max-width:100%}
 .toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
 .toggle input{width:18px;height:18px;accent-color:var(--accent)}
+.sort-bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
 .sort-group{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sort-group .row-lbl{margin-right:4px}
 .sort-opt{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:5px 12px 5px 9px;font-weight:600;font-size:13.5px}
 .sort-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
 .result-info{font-size:13px;color:var(--muted)}
@@ -943,7 +945,10 @@ if (typeof module !== 'undefined') module.exports = DCS;
     if (state.statusF !== 'all') items = items.filter(d => state.statusF === 'other' ? ['sent', 'other', 'none', 'in'].includes(d.cls) : d.cls === state.statusF);
     items = items.filter(matchQ);
     const sortMode = state.sort !== 'sheet' ? state.sort : state.q ? 'new' : 'sheet';
-    if (sortMode !== 'sheet') {
+    if (sortMode === 'rowNew' || sortMode === 'rowOld') {
+      const si = {}; state.data.sheets.forEach((s, i) => si[s.name] = i);
+      items = items.slice().sort((x, y) => (si[x.sheet] - si[y.sheet]) || (sortMode === 'rowNew' ? y.row - x.row : x.row - y.row));
+    } else if (sortMode !== 'sheet') {
       const today = todaySerial(); const ok = s => (s && s <= today ? s : 0);
       const dt = d => ok(d.L.send) || ok(d.L.reply) || ok((d.fields.find(f => f[1] && typeof f[1] === 'object') || [])[1]?.date) || 0;
       items = items.map((d, i) => [d, dt(d), i]).sort((x, y) => {
@@ -969,14 +974,22 @@ if (typeof module !== 'undefined') module.exports = DCS;
       <div class="toolbar">
         <div class="chips" id="statusChips">${sts.map(([v, l]) => `<button class="chip" type="button" data-status="${v}" aria-pressed="${state.statusF === v}">${l}</button>`).join('')}</div>
         <label class="toggle"><input type="checkbox" id="allRevs" ${state.allRevs ? 'checked' : ''}> แสดงประวัติทุก Rev</label>
-        <span class="sort-group" role="group" aria-label="เรียงลำดับ">
-          <label class="toggle sort-opt"><input type="checkbox" id="sortNew" ${state.sort === 'new' ? 'checked' : ''}> ล่าสุดก่อน</label>
-          <label class="toggle sort-opt"><input type="checkbox" id="sortOld" ${state.sort === 'old' ? 'checked' : ''}> เก่าสุดก่อน</label>
+      </div>
+      <div class="sort-bar">
+        <span class="sort-group" role="group" aria-label="เรียงตามลำดับในตาราง Excel">
+          <span class="row-lbl">ลำดับในตาราง Excel</span>
+          <label class="toggle sort-opt"><input type="checkbox" data-sort="rowNew" ${state.sort === 'rowNew' ? 'checked' : ''}> ล่าสุด</label>
+          <label class="toggle sort-opt"><input type="checkbox" data-sort="rowOld" ${state.sort === 'rowOld' ? 'checked' : ''}> เก่าสุด</label>
+        </span>
+        <span class="sort-group" role="group" aria-label="เรียงตามวันที่ส่ง">
+          <span class="row-lbl">วันที่ส่ง</span>
+          <label class="toggle sort-opt"><input type="checkbox" data-sort="new" ${state.sort === 'new' ? 'checked' : ''}> ล่าสุด</label>
+          <label class="toggle sort-opt"><input type="checkbox" data-sort="old" ${state.sort === 'old' ? 'checked' : ''}> เก่าสุด</label>
         </span>
       </div>
       ${state.check ? `<div class="notice"><span>ตัวกรองตรวจข้อมูล: <b>${checkNames[state.check]}</b></span><button type="button" data-clearcheck>ล้างตัวกรอง</button></div>` : ''}
       ${state.q ? `<div class="notice"><span>ผลการค้นหา “<b>${esc(state.q)}</b>” จากทุกชีต</span><button type="button" data-clearq>ล้างคำค้น</button></div>` : ''}
-      <div class="result-info">${esc(curLabel)} · ${items.length.toLocaleString()} รายการ${sortMode === 'new' ? ' · เรียงจากวันที่ส่งล่าสุด' : sortMode === 'old' ? ' · เรียงจากวันที่ส่งเก่าสุด' : ' · เรียงตามลำดับในชีต'}</div>
+      <div class="result-info">${esc(curLabel)} · ${items.length.toLocaleString()} รายการ${({ new: ' · เรียงตามวันที่ส่ง ล่าสุดก่อน', old: ' · เรียงตามวันที่ส่ง เก่าสุดก่อน', rowNew: ' · เรียงตามลำดับในตาราง Excel ล่าสุด (ล่างสุดของชีต) ก่อน', rowOld: ' · เรียงตามลำดับในตาราง Excel เก่าสุดก่อน' })[sortMode] || ' · เรียงตามลำดับในตาราง Excel'}</div>
       ${listBlock(items, 'ไม่พบเอกสารตามเงื่อนไขนี้')}`;
   }
 
@@ -1049,9 +1062,8 @@ if (typeof module !== 'undefined') module.exports = DCS;
   document.addEventListener('change', e => {
     if (e.target.id === 'docFilter') { state.docFilter = e.target.value; state.limit = 120; render(); }
     if (e.target.id === 'allRevs') { state.allRevs = e.target.checked; render(); }
-    if (e.target.id === 'sortNew' || e.target.id === 'sortOld') {
-      const mode = e.target.id === 'sortNew' ? 'new' : 'old';
-      state.sort = e.target.checked ? mode : 'sheet'; state.limit = 120; ls.set('dcs-sort', state.sort); render();
+    if (e.target.dataset && e.target.dataset.sort) {
+      state.sort = e.target.checked ? e.target.dataset.sort : 'sheet'; state.limit = 120; render();
     }
   });
   let qt; $('#q').addEventListener('input', e => {
