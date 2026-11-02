@@ -987,11 +987,6 @@ if (typeof module !== 'undefined') module.exports = DCS;
         <div class="chips" id="statusChips">${sts.map(([v, l]) => `<button class="chip" type="button" data-status="${v}" aria-pressed="${state.statusF === v}">${l}</button>`).join('')}</div>
         <label class="toggle"><input type="checkbox" id="allRevs" ${state.allRevs ? 'checked' : ''}> แสดงประวัติทุก Rev</label>
       </div>
-      <div class="docpick">
-        <label for="docPick" class="row-lbl">รายการเอกสารที่กรอง</label>
-        <div class="select-wrap"><select id="docPick" aria-label="เลือกเอกสารจากรายการที่กรอง">${pickOpts}</select></div>
-        ${state.pickDoc ? '<button type="button" class="linkbtn" data-clearpick>แสดงทั้งหมด</button>' : ''}
-      </div>
       <div class="sort-bar">
         <span class="sort-group" role="group" aria-label="เรียงตามลำดับในตาราง Excel">
           <span class="row-lbl">ลำดับในตาราง Excel</span>
@@ -1003,6 +998,11 @@ if (typeof module !== 'undefined') module.exports = DCS;
           <label class="toggle sort-opt"><input type="checkbox" data-sort="new" ${state.sort === 'new' ? 'checked' : ''}> ล่าสุด</label>
           <label class="toggle sort-opt"><input type="checkbox" data-sort="old" ${state.sort === 'old' ? 'checked' : ''}> เก่าสุด</label>
         </span>
+      </div>
+      <div class="docpick">
+        <label for="docPick" class="row-lbl">รายการเอกสารที่กรอง</label>
+        <div class="select-wrap"><select id="docPick" aria-label="เลือกเอกสารจากรายการที่กรอง">${pickOpts}</select></div>
+        ${state.pickDoc ? '<button type="button" class="linkbtn" data-clearpick>แสดงทั้งหมด</button>' : ''}
       </div>
       ${state.check ? `<div class="notice"><span>ตัวกรองตรวจข้อมูล: <b>${checkNames[state.check]}</b></span><button type="button" data-clearcheck>ล้างตัวกรอง</button></div>` : ''}
       ${state.q ? `<div class="notice"><span>ผลการค้นหา “<b>${esc(state.q)}</b>” จากทุกชีต</span><button type="button" data-clearq>ล้างคำค้น</button></div>` : ''}
