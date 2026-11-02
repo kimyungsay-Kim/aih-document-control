@@ -166,6 +166,10 @@ h2 small{font:400 13px var(--f-body);color:var(--muted)}
 .toolbar select{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);max-width:100%}
 .toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
 .toggle input{width:18px;height:18px;accent-color:var(--accent)}
+.docpick{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:10px 14px;background:linear-gradient(120deg,#EAF6F5,#EDF2FC);border:1.5px solid #A9D6D6;border-radius:12px}
+.docpick select{appearance:none;-webkit-appearance:none;width:100%;min-width:0;height:44px;border:1.5px solid var(--accent);border-radius:10px;background:var(--surface);padding:0 40px 0 12px;font:500 14px var(--f-body);color:var(--ink);cursor:pointer;text-overflow:ellipsis}
+.docpick select:focus{outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+@media (max-width:620px){.docpick{grid-template-columns:minmax(0,1fr) auto}.docpick .select-wrap{grid-column:1/-1;grid-row:2}}
 .sort-bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
 .sort-group{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
 .sort-group .row-lbl{margin-right:4px}
@@ -956,6 +960,14 @@ if (typeof module !== 'undefined') module.exports = DCS;
         return (sortMode === 'new' ? y[1] - x[1] : x[1] - y[1]) || x[2] - y[2];
       }).map(x => x[0]);
     }
+    const dkey = d => d.sheet + '|' + d.row;
+    if (state.pickDoc && !items.some(d => dkey(d) === state.pickDoc)) state.pickDoc = '';
+    const pickOpts = `<option value="">ทุกเอกสารที่กรองอยู่ (${items.length.toLocaleString()} รายการ)</option>` + items.slice(0, 3000).map(d => {
+      const st = d.L.status || STATUS[d.cls][0];
+      return `<option value="${esc(dkey(d))}">${esc(d.label)} · ${esc(st)} — ${esc((d.desc || '').slice(0, 70))}</option>`;
+    }).join('');
+    const filteredCount = items.length;
+    if (state.pickDoc) items = items.filter(d => dkey(d) === state.pickDoc);
     const opts = [`<option value="all">ทุกประเภทเอกสาร</option>`].concat(CAT_ORDER.filter(id => catInfo[id]).map(id => `<optgroup label="${esc(catInfo[id].label)}"><option value="cat:${id}">${esc(catInfo[id].label)} — ทุกชีต</option>${catInfo[id].sheets.map(s => `<option value="sheet:${esc(s)}">ชีต ${esc(s)}</option>`).join('')}</optgroup>`)).join('');
     const sts = [['all', 'ทุกสถานะ'], ['ok', 'อนุมัติ/ผ่าน'], ['note', 'AN'], ['fail', 'ไม่อนุมัติ'], ['waiting', 'รอตอบกลับ'], ['answered', 'ตอบกลับแล้ว'], ['other', 'อื่น ๆ']];
     const checkNames = { flag: 'มีไฟล์ตอบกลับแล้ว แต่ Excel ยังไม่ลงผล', nofile: 'ตอบกลับแล้ว แต่ยังไม่พบไฟล์ใน OneDrive', nosa: 'มีรหัส Site Around แต่ไม่มีลิงก์', future: 'วันที่ส่ง/ตอบกลับเป็นวันในอนาคต' };
@@ -974,6 +986,11 @@ if (typeof module !== 'undefined') module.exports = DCS;
       <div class="toolbar">
         <div class="chips" id="statusChips">${sts.map(([v, l]) => `<button class="chip" type="button" data-status="${v}" aria-pressed="${state.statusF === v}">${l}</button>`).join('')}</div>
         <label class="toggle"><input type="checkbox" id="allRevs" ${state.allRevs ? 'checked' : ''}> แสดงประวัติทุก Rev</label>
+      </div>
+      <div class="docpick">
+        <label for="docPick" class="row-lbl">รายการเอกสารที่กรอง</label>
+        <div class="select-wrap"><select id="docPick" aria-label="เลือกเอกสารจากรายการที่กรอง">${pickOpts}</select></div>
+        ${state.pickDoc ? '<button type="button" class="linkbtn" data-clearpick>แสดงทั้งหมด</button>' : ''}
       </div>
       <div class="sort-bar">
         <span class="sort-group" role="group" aria-label="เรียงตามลำดับในตาราง Excel">
@@ -1022,6 +1039,7 @@ if (typeof module !== 'undefined') module.exports = DCS;
     const v = !has ? vStart() : state.tab === 'pending' ? vPending() : state.tab === 'resubmit' ? vResubmit() : state.tab === 'docs' ? vDocs() : vOverview();
     $('#view').innerHTML = v;
     const sel = $('#docFilter'); if (sel) sel.value = state.docFilter;
+    const dp = $('#docPick'); if (dp) dp.value = state.pickDoc || '';
     $('#foot').textContent = has ? 'ข้อมูลอ่านจากไฟล์ Excel โดยตรง · สถานะนับจาก Rev ล่าสุดที่มีข้อมูลของแต่ละเรื่อง · ลิงก์ OneDrive มาจากชีต Links' : '';
   }
 
@@ -1056,11 +1074,13 @@ if (typeof module !== 'undefined') module.exports = DCS;
     if (t.dataset.status) { state.statusF = t.dataset.status; state.limit = 120; return render(); }
     if (t.dataset.bucket) { e.preventDefault(); state.bucket = t.dataset.bucket; state.limit = 120; return render(); }
     if (t.hasAttribute('data-more')) { state.limit += 120; return render(); }
+    if (t.hasAttribute('data-clearpick')) { state.pickDoc = ''; return render(); }
     if (t.hasAttribute('data-clearcheck')) { state.check = null; return render(); }
     if (t.hasAttribute('data-clearq')) { state.q = ''; $('#q').value = ''; return render(); }
   });
   document.addEventListener('change', e => {
-    if (e.target.id === 'docFilter') { state.docFilter = e.target.value; state.limit = 120; render(); }
+    if (e.target.id === 'docFilter') { state.docFilter = e.target.value; state.pickDoc = ''; state.limit = 120; render(); }
+    if (e.target.id === 'docPick') { state.pickDoc = e.target.value; state.limit = 120; render(); const v = $('#view .docs'); if (v && state.pickDoc) v.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
     if (e.target.id === 'allRevs') { state.allRevs = e.target.checked; render(); }
     if (e.target.dataset && e.target.dataset.sort) {
       state.sort = e.target.checked ? e.target.dataset.sort : 'sheet'; state.limit = 120; render();
